@@ -44,7 +44,7 @@ python scripts/run_stat248_method2_arimax.py --maxiter 80
 python scripts/run_stat248_method3_cv.py
 ```
 
-## Notes for graders
+## Methodologies
 
 - **Method 1:** clustered OLS with lagged outcome; residuals + Breusch–Pagan / Durbin–Watson in the notebook.  
 - **Method 2:** `SARIMAX(1,0,0)` with exogenous regressors **per team–season stratum** + BIC vs home-only baseline; pooled diagnostics figure for the best-BIC streak.  
