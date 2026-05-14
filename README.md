@@ -2,7 +2,9 @@
 
 **Author:** Chenfei Peng  
 
-This repository is the **code submission** for Liberty Hamilton’s **STAT 248** final project: a reproducible Jupyter report plus scripts, bundled data, and result artifacts.
+Professional basketball schedules pack **back-to-backs** and **short-turnaround** nights into dense road trips—conditions that resemble travel-fatigue experiments in sports science. This project asks whether, at the **team-game level**, unusually tight rest predicts worse performance **after controlling for opponent schedule, venue, momentum (lagged outcomes), and season**, and whether those associations show up comparably for **margins**, **effective field-goal shooting**, **turnovers**, and in **predictive** out-of-sample tests.
+
+Using three regular seasons (2022–23–2024–25) of NBA team box scores merged into a chronologically ordered panel, the analysis walks through **(1)** cluster-robust lagged regressions, **(2)** compact ARIMAX-style models fit **within each team–season** to respect the time-series structure, and **(3)** forward-expanding seasonal cross-validation that trains only on past league years before scoring the next. All code, the frozen input CSV, tables, and figures live in this repo so the entire pipeline can be rerun from the notebook.
 
 ## Repository layout
 
