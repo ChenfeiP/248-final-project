@@ -24,7 +24,7 @@ Using three regular seasons (2022–23–2024–25) of NBA team box scores merge
 pip install -r requirements.txt
 ```
 
-- **Rebuild from NBA.com (optional):** the panel was built with the `nba-api` package. Install with `pip install nba-api` (PyPI distribution of [swar/nba_api](https://github.com/swar/nba_api)). Then in the notebook set `REBUILD_PANEL = True`, or run:
+- **Rebuild from NBA.com:** the panel was built with the `nba-api` package. Install with `pip install nba-api` (PyPI distribution of [swar/nba_api](https://github.com/swar/nba_api)). Then in the notebook set `REBUILD_PANEL = True`, or run:
 
 ```bash
 export PYTHONPATH="/path/to/empty/or/nba-api/src:$PYTHONPATH"   # only if developing from source
@@ -37,7 +37,7 @@ python scripts/build_nba_team_game_dataset.py \
 
 - **Notebook kernel:** open the repo root (`248-final-project/`) in Jupyter / VS Code / Cursor so `Path.cwd()` resolves correctly in the first cell.
 
-## Quick checks (optional CLIs)
+## Quick checks
 
 ```bash
 python scripts/run_stat248_method2_arimax.py --maxiter 80
