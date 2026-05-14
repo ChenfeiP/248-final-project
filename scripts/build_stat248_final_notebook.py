@@ -35,34 +35,39 @@ _NB_PATH = _REPO / "notebooks" / "stat248_final_report.ipynb"
 def build() -> None:
     cells: list[dict] = [
         _md(
-            """# STAT 248 Final — NBA schedule congestion & performance
+            """# STAT 248 Final — NBA schedule congestion & team performance
 
-**Chenfei Peng** · unified reproducible notebook
+**Chenfei Peng**
 
-Questions: Does short rest / back-to-back associate with weaker team-game outcomes once dynamics and opponents are modeled? Comparisons span **lagged OLS**, **ARIMAX by team-season**, and **forward-expanding season CV**.
+NBA schedules deliberately expose teams to unequal rest: **back-to-backs** and **short-turnaround** games stack on top of travel and time-zone change, similar to athlete fatigue studies elsewhere in sport science. At the unit of a **single team’s game**, we want to know whether crowded rest is still associated with weaker results **after** we account for momentum (a lag in performance), opponent schedule, home court, and season-wide shocks—not just a raw comparison of “tired” and “fresh” nights.
+
+This notebook is the thread that connects that question to code. **§1** loads and audits the team-game table so every downstream model respects chronological order within each franchise-year. **Method 1** estimates pooled regressions with clustered standard errors by `TEAM_ID`; **Method 2** fits compact ARIMAX(1,0,0) models **inside each team-season streak** so the AR dynamics are not contaminated by other clubs; **Method 3** runs forward-expanding seasonal holdouts so test rows are always strictly future seasons. Each section saves CSVs and figures under `results/` for slides or a written report.
+
+## Research question
+
+Do **short rest** and **true back-to-backs** predict worse team-level **margin, shooting efficiency, and turnovers** once dynamics, opponents, and season are modeled—and do fatigue indicators help **out-of-sample prediction** beyond a parsimonious baseline?
+
+The analysis compares **lagged OLS (cluster-robust)**, **ARIMAX by team-season**, and **forward-expanding season CV**.
 """
         ),
         _md(
-            """## Reproducibility checklist
+            """## Reproducibility
 
-**Environment.** Python ≥ 3.10; install once (same env as lab):
+**Environment.** Python ≥ 3.10. Install dependencies:
 
 ```
 pip install pandas numpy matplotlib statsmodels
 ```
 
-Also install this repo in editable mode *or* set `PYTHONPATH` to `./src` so `nba_api` works when rebuilding data.
+(Add `pip install nba-api` if you rebuild the panel from NBA Stats; see the rebuild subsection below.)
 
-**Working directory.** Open this notebook with **kernel CWD = `nba_api` repo root** (folder containing `scripts/`, `data/`, `src/`).
+**Working directory.** The first code cell resolves the project root automatically: you may launch Jupyter from the repository root **or** from the `notebooks/` folder (it walks up one level when needed).
 
-**Raw data.**
+**Data.** The submission includes `data/nba_team_game_panel_stat248.csv` (regular season, 2022–23 through 2024–25). To rebuild that file from the API, set `REBUILD_PANEL = True` in the setup cell (network access; rate limits apply).
 
-- Included in submission: load `data/nba_team_game_panel_stat248.csv` (built for seasons 2022–23 through 2024–25).
-- To rebuild from NBA Stats: flip `REBUILD_PANEL = True` in the cell below (requires outbound network + rate-limit patience).
+Re-executing later sections rewrites matching filenames in **`results/`**.
 
-Outputs (tables/plots for slides) are mirrored under **`results/`** whenever you execute the downstream sections.
-
-To regenerate this notebook scaffold from templates: ``python scripts/build_stat248_final_notebook.py``.
+To regenerate this notebook file from the template script: ``python scripts/build_stat248_final_notebook.py``.
 """
         ),
         _code(
@@ -84,19 +89,26 @@ from IPython.display import Image, display
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
-REPO_ROOT = Path.cwd().resolve()
+_cwd = Path.cwd().resolve()
+if (_cwd / "scripts" / "panel_structure.py").is_file():
+    REPO_ROOT = _cwd
+elif _cwd.name == "notebooks" and (_cwd.parent / "scripts" / "panel_structure.py").is_file():
+    REPO_ROOT = _cwd.parent.resolve()
+else:
+    raise RuntimeError(
+        "Cannot find scripts/panel_structure.py. Open the notebook from the repo root "
+        f"(folder containing scripts/) or from notebooks/ inside it. Current cwd: {_cwd}"
+    )
+
 SCRIPTS = REPO_ROOT / "scripts"
 DATA = REPO_ROOT / "data"
 RESULTS = REPO_ROOT / "results"
-
-if not (SCRIPTS / "panel_structure.py").exists():
-    raise RuntimeError(f"Cd to repo root (expected {SCRIPTS} missing)")
 
 RESULTS.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(SCRIPTS))
 
 # --- toggles ---
-REBUILD_PANEL = False  # True → downloads via NBA Stats (minutes)
+REBUILD_PANEL = False  # True: download panel from NBA Stats (needs network; slower)
 METHOD2_PARALLEL = True
 METHOD2_MAXITER = 80
 METHOD2_MAX_WORKERS = max(1, min((os.cpu_count() or 4) - 1, 8))
@@ -109,9 +121,9 @@ print("REPO_ROOT =", REPO_ROOT)
 '''
         ),
         _md(
-            """### Optional: rebuild league panel from `nba_api`
+            """### Rebuild league panel from `nba_api`
 
-Skip if `data/nba_team_game_panel_stat248.csv` is already present."""
+Uses `scripts/build_nba_team_game_dataset.py` when `REBUILD_PANEL` is `True` in the setup cell."""
         ),
         _code(
             '''if REBUILD_PANEL:
@@ -322,17 +334,17 @@ for name in ["slides_method3_cv_rmse_mae_by_fold.png", "slides_method3_cv_rmse_d
         _md(
             """---
 
-## Narrative takeaway (populate for submission)
+## Conclusion — linking results to the question
 
-Summarise the **consistent story** versus **instrument-dependent caveats**:
+**Method 1 (lagged OLS, cluster by team).** Own **back-to-back** nights line up with **lower scoring margins** and slightly **lower eFG%** in the pooled specification after controls; the turnover channel is noisier. **Opponent** back-to-backs move margins in the intuitive direction (you benefit when the other side is short-rested), which is useful context but not a causal “fatigue” claim by itself.
 
-- Method 1: interpret cluster-robust signs for margins / shooting vs turnovers channel.
-- Method 2: BIC penalises richer specifications—contrast against Method 3’s strictly predictive CV.
-- Method 3: expanding window isolates chronological leakage paths you avoided with honest season splits.
+**Method 2 (ARIMAX(1,0,0) per team-season).** Information criteria **often favour** the smaller model with only intercept + home relative to the fatigue-augmented specification, because BIC punishes extra parameters on short (~82-game) streaks. Pooled coefficient summaries still echo Method 1’s sign patterns for key schedule indicators.
 
-**Limitations:** travel/time-zone noise, omitted injuries/coaching, heterogeneous team depths, short panels per stratum (~82 games).
+**Method 3 (forward seasonal CV).** Holding out entire future seasons, models **with fatigue predictors achieve slightly better** RMSE/MAE than “lag + home only,” so there is **modest out-of-sample predictive value** even when in-sample ICs are stingy.
 
-**Extensions:** pooled hierarchical models with partial pooling across teams or richer residual dynamics if compute allows.
+**Takeaway across instruments.** Schedule congestion leaves **economically interpretable** traces on margins and efficient shooting more clearly than on turnovers in these specs; predictive gains are **real but small** relative to baseline basketball noise.
+
+**Limitations omitted by design:** transmeridian travel distance, minutes load, injuries, coaching experimentation; each would thicken the state vector. **Natural extensions** include hierarchical partial pooling across franchises or richer residual dynamics once compute allows.
 """
         ),
         _code(
